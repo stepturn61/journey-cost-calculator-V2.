@@ -1,8 +1,15 @@
 import pandas as pd
+import requests
 import json
+import io
 from datetime import datetime
 
 CSV_URL = "https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-latest-fuel-prices-csv"
+
+# Spoof a real browser so the server doesn't block us with a 403
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+}
 
 # The exact column names in the Gov CSV
 FUEL_COLS = {
@@ -14,8 +21,12 @@ FUEL_COLS = {
 
 def main():
     try:
-        # Read the CSV directly from the URL
-        df = pd.read_csv(CSV_URL)
+        # Fetch the CSV using requests with the browser headers
+        response = requests.get(CSV_URL, headers=HEADERS)
+        response.raise_for_status() # This will throw an error if it's a 403/404 etc.
+        
+        # Read the CSV into pandas from the text data
+        df = pd.read_csv(io.StringIO(response.text))
         
         prices = {}
         prices["last_updated"] = datetime.now().strftime("%d %b %Y")
