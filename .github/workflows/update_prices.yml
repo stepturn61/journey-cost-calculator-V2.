@@ -2,7 +2,7 @@ name: Update UK Fuel Prices V2
 
 on:
   schedule:
-    # Runs at 6:00 PM UTC (6:00 PM UK winter time, 7:00 PM BST) to ensure the 4PM data is live
+    # Runs at 6:00 PM UTC to ensure the 4PM data is live
     - cron: '0 18 * * *'
   workflow_dispatch:
 
@@ -21,8 +21,8 @@ jobs:
         with:
           python-version: '3.x'
           
-      - name: Install Pandas
-        run: pip install pandas
+      - name: Install dependencies
+        run: pip install pandas requests
 
       - name: Run script to fetch and clean CSV
         run: python scripts/fetch_prices.py
