@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Journey Cost Calculator | Live Fuel Prices</title>
+    <meta name="description" content="Calculate your journey fuel cost with live UK petrol and diesel prices. Supports E10, E5, B7S, B7P, MPG, and Pence per Litre.">
+    
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --border: #334155;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --petrol: #f59e0b;
+            --diesel: #8b5cf6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            margin-bottom: 2rem;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 1.5rem; text-align: center; font-weight: 600; }
+        .input-group { margin-bottom: 1.25rem; }
+        label { display: block; font-size: 0.875rem; color: var(--muted); margin-bottom: 0.5rem; font-weight: 500; }
+        .input-row { display: flex; gap: 0.5rem; }
+
+        input[type="number"] {
+            flex: 1; background-color: var(--bg); border: 1px solid var(--border);
+            border-radius: 0.75rem; padding: 0.75rem 1rem; color: var(--text);
+            font-size: 1rem; outline: none; transition: border-color 0.2s;
+        }
+        input[type="number"]:focus { border-color: var(--accent); }
+
+        /* Fuel Type V2 Styles */
+        .fuel-type-container { display: flex; gap: 1rem; margin-bottom: 1.25rem; }
+        .fuel-group { flex: 1; }
+        .fuel-group-label { 
+            display: block; font-size: 0.75rem; text-align: center; 
+            color: var(--muted); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .btn-row { display: flex; gap: 0.5rem; }
+        
+        .fuel-btn {
+            flex: 1; background-color: var(--bg); border: 1px solid var(--border);
+            border-radius: 0.75rem; color: var(--muted); padding: 0.75rem 0.25rem;
+            font-size: 0.875rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; text-align: center;
+        }
+        .fuel-btn:hover { border-color: var(--accent); color: var(--text); }
+        
+        .fuel-btn.active.petrol { background-color: var(--petrol); border-color: var(--petrol); color: white; }
+        .fuel-btn.active.diesel { background-color: var(--diesel); border-color: var(--diesel); color: white; }
+
+        /* Reusable Toggle Buttons */
+        .toggle-btn {
+            background-color: var(--bg); border: 1px solid var(--border);
+            border-radius: 0.75rem; color: var(--muted); padding: 0.75rem;
+            font-size: 0.875rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; min-width: 90px; text-align: center;
+        }
+        .toggle-btn:hover { border-color: var(--accent); color: var(--text); }
+        .toggle-btn.active { border-color: var(--accent); background-color: var(--accent); color: white; }
+
+        .switch-container {
+            display: flex; align-items: center; justify-content: space-between;
+            background-color: var(--bg); border: 1px solid var(--border);
+            border-radius: 0.75rem; padding: 0.5rem 1rem; cursor: pointer;
+            margin-bottom: 1.25rem; transition: border-color 0.2s;
+        }
+        .switch-container:hover { border-color: var(--accent); }
+        .switch-label { font-size: 1rem; font-weight: 500; }
+        .switch-track { width: 44px; height: 24px; background-color: var(--border); border-radius: 12px; position: relative; transition: background-color 0.2s; }
+        .switch-track.active { background-color: var(--accent); }
+        .switch-thumb { width: 20px; height: 20px; background-color: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: transform 0.2s; }
+        .switch-track.active .switch-thumb { transform: translateX(20px); }
+
+        .results { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+        .result-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .result-label { color: var(--muted); font-size: 1rem; }
+        .result-value { font-size: 1.25rem; font-weight: 600; }
+        .result-value.highlight { color: var(--success); font-size: 1.5rem; }
+        .hidden { display: none; }
+
+        .live-prices-badge {
+            text-align: center; font-size: 0.75rem; color: var(--muted);
+            margin-bottom: 1rem; padding: 0.5rem; border-radius: 0.5rem;
+            background-color: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        /* Content / SEO Section Styles */
+        .content-section { width: 100%; max-width: 450px; margin-bottom: 2rem; }
+        .content-card {
+            background-color: var(--card); border: 1px solid var(--border);
+            border-radius: 1rem; padding: 1.5rem; margin-bottom: 1rem;
+        }
+        .content-card h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--accent); }
+        .content-card p { color: var(--muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem; }
+
+        .tip-item {
+            background-color: var(--bg); border-radius: 0.75rem; padding: 1rem;
+            margin-bottom: 0.5rem; cursor: pointer; border: 1px solid transparent; transition: border-color 0.2s;
+        }
+        .tip-item:hover { border-color: var(--border); }
+        .tip-title { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 0.95rem; }
+        .tip-arrow { transition: transform 0.2s; color: var(--muted); }
+        .tip-item.open .tip-arrow { transform: rotate(180deg); }
+        .tip-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin-top 0.3s ease; color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
+        .tip-item.open .tip-content { max-height: 200px; margin-top: 0.75rem; }
+
+        .ad-placeholder {
+            width: 100%; max-width: 450px; background-color: var(--card); border: 1px dashed var(--border);
+            border-radius: 1rem; padding: 2rem; text-align: center; color: var(--muted);
+            font-size: 0.8rem; margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Journey Cost Calculator 🇬🇧</h1>
+        
+        <div class="live-prices-badge hidden" id="liveBadge">
+            Live UK prices updated: <span id="liveDate">-</span>
+        </div>
+
+        <!-- Fuel Type V2 -->
+        <div class="fuel-type-container">
+            <div class="fuel-group">
+                <span class="fuel-group-label">Unleaded</span>
+                <div class="btn-row">
+                    <button class="fuel-btn petrol active" data-fuel="E10">E10</button>
+                    <button class="fuel-btn petrol" data-fuel="E5">E5</button>
+                </div>
+            </div>
+            <div class="fuel-group">
+                <span class="fuel-group-label">Diesel</span>
+                <div class="btn-row">
+                    <button class="fuel-btn diesel" data-fuel="B7S">B7S</button>
+                    <button class="fuel-btn diesel" data-fuel="B7P">B7P</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Distance -->
+        <div class="input-group">
+            <label>Distance</label>
+            <div class="input-row">
+                <input type="number" id="distance" placeholder="e.g. 150" min="0" step="any">
+                <button class="toggle-btn active" id="distUnitBtn" onclick="toggleDistanceUnit()">Miles</button>
+            </div>
+        </div>
+
+        <!-- Fuel Price -->
+        <div class="input-group">
+            <label>Fuel Price</label>
+            <div class="input-row">
+                <input type="number" id="fuelPrice" placeholder="e.g. 1.49" min="0" step="0.001">
+                <button class="toggle-btn active" id="priceUnitBtn" onclick="togglePriceUnit()">/ Litre</button>
+            </div>
+        </div>
+
+        <!-- Fuel Consumption -->
+        <div class="input-group">
+            <label>Fuel Consumption</label>
+            <div class="input-row">
+                <input type="number" id="fuelConsumption" placeholder="e.g. 35" min="0" step="any">
+                <button class="toggle-btn active" id="consumpUnitBtn" onclick="toggleConsumptionUnit()">MPG</button>
+            </div>
+        </div>
+
+        <!-- Return Trip Toggle -->
+        <div class="switch-container" onclick="toggleReturn()">
+            <span class="switch-label">Return Trip</span>
+            <div class="switch-track" id="returnSwitch">
+                <div class="switch-thumb"></div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="results">
+            <div class="result-row">
+                <span class="result-label">Single Trip</span>
+                <span class="result-value" id="singleCost">£0.00</span>
+            </div>
+            <div class="result-row hidden" id="returnRow">
+                <span class="result-label">Return Trip</span>
+                <span class="result-value highlight" id="returnCost">£0.00</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- INSTRUCTIONS & CONTENT FOR SEO/ADSENSE -->
+    <div class="content-section">
+        
+        <div class="content-card">
+            <h2>How to Use This Calculator</h2>
+            <p>Enter your total trip distance, the current price of fuel at the pump, and your vehicle's average fuel consumption. You can easily switch between UK Gallons and Litres, as well as Miles and Kilometers. Toggle the "Return Trip" switch to instantly double your calculation for a round journey!</p>
+        </div>
+
+        <div class="ad-placeholder">
+            Advertisement / AdSense Code Goes Here
+        </div>
+
+        <div class="content-card">
+            <h2>Ways to Lower Your Fuel Consumption</h2>
+            <p>Saving fuel isn't just good for your wallet; it's good for the environment. Here are proven ways to get more miles out of every gallon:</p>
+
+            <div class="tip-item" onclick="toggleTip(this)">
+                <div class="tip-title">1. Maintain Steady Speed <span class="tip-arrow">▼</span></div>
+                <div class="tip-content">Rapid acceleration and hard braking are the biggest wastes of fuel. Use cruise control on highways to maintain a constant speed and improve your MPG by up to 14%.</div>
+            </div>
+
+            <div class="tip-item" onclick="toggleTip(this)">
+                <div class="tip-title">2. Check Tire Pressure <span class="tip-arrow">▼</span></div>
+                <div class="tip-content">Under-inflated tires create more rolling resistance, forcing your engine to work harder. Check your tires monthly; proper inflation can improve gas mileage by up to 3%.</div>
+            </div>
+
+            <div class="tip-item" onclick="toggleTip(this)">
+                <div class="tip-title">3. Reduce Excess Weight <span class="tip-arrow">▼</span></div>
+                <div class="tip-content">An extra 100 pounds in your trunk can reduce your fuel economy by about 1%. Clear out the golf clubs, heavy tools, and unnecessary cargo.</div>
+            </div>
+
+            <div class="tip-item" onclick="toggleTip(this)">
+                <div class="tip-title">4. Avoid Excessive Idling <span class="tip-arrow">▼</span></div>
+                <div class="tip-content">Idling gets 0 miles per gallon. If you're going to be parked for more than 60 seconds (and it's safe to do so), turn off the engine.</div>
+            </div>
+
+            <div class="tip-item" onclick="toggleTip(this)">
+                <div class="tip-title">5. Use AC Wisely <span class="tip-arrow">▼</span></div>
+                <div class="tip-content">At lower speeds, rolling down the windows is more efficient. At highway speeds, open windows create aerodynamic drag, making the AC the more fuel-efficient option.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State variables
+        let isMiles = true;
+        let isPerLitre = true; 
+        let isMPG = true;      
+        let isReturn = false;
+        let currentFuelType = 'E10';
+        let livePrices = null;
+
+        // UK Constants
+        const LITRES_PER_UK_GALLON = 4.54609;
+        const MILES_PER_KM = 0.621371;
+
+        // DOM Elements
+        const distanceInput = document.getElementById('distance');
+        const fuelPriceInput = document.getElementById('fuelPrice');
+        const fuelConsumptionInput = document.getElementById('fuelConsumption');
+        
+        const distUnitBtn = document.getElementById('distUnitBtn');
+        const priceUnitBtn = document.getElementById('priceUnitBtn');
+        const consumpUnitBtn = document.getElementById('consumpUnitBtn');
+        
+        const returnSwitch = document.getElementById('returnSwitch');
+        const returnRow = document.getElementById('returnRow');
+        
+        const singleCostEl = document.getElementById('singleCost');
+        const returnCostEl = document.getElementById('returnCost');
+
+        // Event listeners for inputs
+        distanceInput.addEventListener('input', calculate);
+        fuelPriceInput.addEventListener('input', calculate);
+        fuelConsumptionInput.addEventListener('input', calculate);
+
+        // Event listeners for Fuel Type Buttons
+        document.querySelectorAll('.fuel-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active from all
+                document.querySelectorAll('.fuel-btn').forEach(b => b.classList.remove('active'));
+                // Add active to clicked
+                btn.classList.add('active');
+                currentFuelType = btn.dataset.fuel;
+                updateLivePrice();
+                calculate();
+            });
+        });
+
+        // Fetch Live Prices on load
+        window.onload = () => {
+            fetch('./prices.json')
+                .then(res => {
+                    if (!res.ok) throw new Error('File not found');
+                    return res.json();
+                })
+                .then(data => {
+                    livePrices = data;
+                    document.getElementById('liveBadge').classList.remove('hidden');
+                    document.getElementById('liveDate').innerText = data.last_updated;
+                    updateLivePrice();
+                })
+                .catch(err => {
+                    console.log("Live prices not available. Using fallback defaults.");
+                    livePrices = { E10: 1.49, E5: 1.55, B7S: 1.52, B7P: 1.59, last_updated: "Default" };
+                    updateLivePrice();
+                });
+        };
+
+        function updateLivePrice() {
+            if (livePrices) {
+                if (!isPerLitre) togglePriceUnit(); // Ensure we are on /Litre to apply live price correctly
+                let priceVal = livePrices[currentFuelType];
+                
+                // Fallback if the specific fuel type is missing from JSON
+                if (!priceVal) priceVal = 1.50; 
+                
+                fuelPriceInput.value = priceVal;
+            }
+        }
+
+        function toggleDistanceUnit() {
+            isMiles = !isMiles;
+            distUnitBtn.innerText = isMiles ? 'Miles' : 'KM';
+            distUnitBtn.classList.toggle('active');
+            updateConsumptionLabel();
+            calculate();
+        }
+
+        function togglePriceUnit() {
+            isPerLitre = !isPerLitre;
+            priceUnitBtn.innerText = isPerLitre ? '/ Litre' : '/ Gallon';
+            priceUnitBtn.classList.toggle('active');
+            calculate();
+        }
+
+        function toggleConsumptionUnit() {
+            isMPG = !isMPG;
+            updateConsumptionLabel();
+            consumpUnitBtn.classList.toggle('active');
+            calculate();
+        }
+
+        function updateConsumptionLabel() {
+            if (isMPG) {
+                consumpUnitBtn.innerText = 'MPG';
+                fuelConsumptionInput.placeholder = 'e.g. 35';
+            } else {
+                consumpUnitBtn.innerText = 'L/100km';
+                fuelConsumptionInput.placeholder = 'e.g. 8';
+            }
+        }
+
+        function toggleReturn() {
+            isReturn = !isReturn;
+            returnSwitch.classList.toggle('active');
+            returnRow.classList.toggle('hidden');
+            calculate();
+        }
+
+        function toggleTip(element) {
+            element.classList.toggle('open');
+        }
+
+        function calculate() {
+            const distance = parseFloat(distanceInput.value) || 0;
+            const price = parseFloat(fuelPriceInput.value) || 0;
+            const consumption = parseFloat(fuelConsumptionInput.value) || 0;
+
+            if (distance <= 0 || price <= 0 || consumption <= 0) {
+                singleCostEl.innerText = '£0.00';
+                returnCostEl.innerText = '£0.00';
+                return;
+            }
+
+            // Step 1: Convert distance to Miles
+            const distanceMiles = isMiles ? distance : distance * MILES_PER_KM;
+
+            // Step 2: Calculate UK Gallons needed
+            let ukGallonsNeeded = 0;
+            if (isMPG) {
+                ukGallonsNeeded = distanceMiles / consumption;
+            } else {
+                const distanceKm = isMiles ? distance / MILES_PER_KM : distance;
+                const litresNeeded = (consumption / 100) * distanceKm;
+                ukGallonsNeeded = litresNeeded / LITRES_PER_UK_GALLON;
+            }
+
+            // Step 3: Calculate Price per UK Gallon
+            let pricePerGallon = price;
+            if (isPerLitre) {
+                pricePerGallon = price * LITRES_PER_UK_GALLON;
+            }
+
+            // Step 4: Final Cost
+            const singleTripCost = ukGallonsNeeded * pricePerGallon;
+            const returnTripCost = singleTripCost * 2;
+
+            // Update UI
+            singleCostEl.innerText = `£${singleTripCost.toFixed(2)}`;
+            returnCostEl.innerText = `£${returnTripCost.toFixed(2)}`;
+        }
+    </script>
+</body>
+</html>
